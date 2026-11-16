@@ -5,84 +5,140 @@ import zlib from "node:zlib";
 const CANVAS = 128;
 const SUPERSAMPLE = 4;
 const SIZES = [16, 32, 48, 128];
-const OUTPUT_DIR = path.join(import.meta.dirname, "..", "icons");
+const DEFAULT_DESIGN = "stacked";
+const STORE_FLAG = "--store";
+const STORE_SIZE = 128;
+const STORE_PADDING = 16;
+const STORE_FILE = "store-icon-128.png";
+const STORE_DIR = "MyBookmarks-store-assets";
+const WHITE = [255, 255, 255];
+const BLACK = [0, 0, 0];
 
-const BACKGROUND_TOP = [99, 102, 241];
-const BACKGROUND_BOTTOM = [37, 99, 235];
-const MARK = [255, 255, 255];
-const BACKGROUND_MIN = 6;
-const BACKGROUND_MAX = 122;
-const BACKGROUND_RADIUS = 28;
-const BOOKMARK = [
-  [42, 30],
-  [86, 30],
-  [86, 100],
-  [64, 82],
-  [42, 100],
-];
-
-function insideRoundedSquare(x, y) {
-  if (x < BACKGROUND_MIN || x > BACKGROUND_MAX || y < BACKGROUND_MIN || y > BACKGROUND_MAX) {
-    return false;
-  }
-  const innerMin = BACKGROUND_MIN + BACKGROUND_RADIUS;
-  const innerMax = BACKGROUND_MAX - BACKGROUND_RADIUS;
-  const nearestX = Math.min(Math.max(x, innerMin), innerMax);
-  const nearestY = Math.min(Math.max(y, innerMin), innerMax);
-  const dx = x - nearestX;
-  const dy = y - nearestY;
-  return dx * dx + dy * dy <= BACKGROUND_RADIUS * BACKGROUND_RADIUS;
+function hex(value) {
+  return [1, 3, 5].map((offset) => parseInt(value.slice(offset, offset + 2), 16));
 }
 
-function insidePolygon(x, y, points) {
-  let inside = false;
-  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-    const [xi, yi] = points[i];
-    const [xj, yj] = points[j];
-    const crosses = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (crosses) {
-      inside = !inside;
+function mix(from, to, amount) {
+  return from.map((channel, index) => channel + (to[index] - channel) * amount);
+}
+
+function gradient(stops) {
+  const colors = stops.map(hex);
+  return (x, y) => {
+    const position = Math.min(Math.max((x + y) / (2 * CANVAS), 0), 1) * (colors.length - 1);
+    const index = Math.min(Math.floor(position), colors.length - 2);
+    return mix(colors[index], colors[index + 1], position - index);
+  };
+}
+
+function solid(color) {
+  return () => color;
+}
+
+function roundedRect({ left, top, right, bottom, radius }) {
+  return (x, y) => {
+    if (x < left || x > right || y < top || y > bottom) {
+      return false;
     }
-  }
-  return inside;
+    const nearestX = Math.min(Math.max(x, left + radius), right - radius);
+    const nearestY = Math.min(Math.max(y, top + radius), bottom - radius);
+    return (x - nearestX) ** 2 + (y - nearestY) ** 2 <= radius ** 2;
+  };
 }
 
-function sample(x, y) {
-  if (!insideRoundedSquare(x, y)) {
-    return [0, 0, 0, 0];
-  }
-  if (insidePolygon(x, y, BOOKMARK)) {
-    return [...MARK, 255];
-  }
-  const t = (y - BACKGROUND_MIN) / (BACKGROUND_MAX - BACKGROUND_MIN);
-  const color = BACKGROUND_TOP.map((channel, index) => channel + (BACKGROUND_BOTTOM[index] - channel) * t);
-  return [...color, 255];
+function ribbon({ centerX, top, width, height, radius, notch }) {
+  const halfWidth = width / 2;
+  const body = roundedRect({ left: centerX - halfWidth, top, right: centerX + halfWidth, bottom: top + height + radius, radius });
+  return (x, y) => {
+    const edge = top + height - notch * (1 - Math.abs(x - centerX) / halfWidth);
+    return y <= edge && body(x, y);
+  };
 }
 
-function renderPixels(size) {
+function sparkle({ centerX, centerY, size }) {
+  return (x, y) => Math.sqrt(Math.abs(x - centerX)) + Math.sqrt(Math.abs(y - centerY)) <= Math.sqrt(size);
+}
+
+function shifted(shape, dx, dy) {
+  return (x, y) => shape(x - dx, y - dy);
+}
+
+function layer(shape, color, opacity = 1) {
+  return { shape, color, opacity };
+}
+
+const TILE = roundedRect({ left: 4, top: 4, right: 124, bottom: 124, radius: 30 });
+
+function stackedDesign() {
+  const back = ribbon({ centerX: 76, top: 26, width: 44, height: 70, radius: 9, notch: 17 });
+  const front = ribbon({ centerX: 54, top: 36, width: 46, height: 72, radius: 9, notch: 18 });
+  return [
+    layer(TILE, gradient(["#4f46e5", "#7c3aed", "#ec4899"])),
+    layer(back, solid(WHITE), 0.42),
+    layer(shifted(front, 3, 4), solid(BLACK), 0.2),
+    layer(front, solid(WHITE)),
+  ];
+}
+
+function sparkDesign() {
+  const mark = ribbon({ centerX: 58, top: 30, width: 50, height: 76, radius: 10, notch: 19 });
+  return [
+    layer(TILE, gradient(["#2563eb", "#4f46e5", "#7c3aed"])),
+    layer(shifted(mark, 3, 4), solid(BLACK), 0.2),
+    layer(mark, solid(WHITE)),
+    layer(sparkle({ centerX: 96, centerY: 34, size: 20 }), solid(hex("#fde047"))),
+    layer(sparkle({ centerX: 104, centerY: 60, size: 9 }), solid(hex("#fde047"))),
+  ];
+}
+
+function spacesDesign() {
+  const shape = (centerX, top) => ribbon({ centerX, top, width: 26, height: 62, radius: 6, notch: 11 });
+  return [
+    layer(TILE, gradient(["#1e1b4b", "#111827"])),
+    layer(shape(34, 30), solid(hex("#818cf8"))),
+    layer(shape(64, 38), solid(hex("#f472b6"))),
+    layer(shape(94, 30), solid(hex("#fbbf24"))),
+  ];
+}
+
+const DESIGNS = { stacked: stackedDesign, spark: sparkDesign, spaces: spacesDesign };
+
+function sample(layers, x, y) {
+  return layers.reduce(
+    (pixel, { shape, color, opacity }) => {
+      if (!shape(x, y)) {
+        return pixel;
+      }
+      const alpha = opacity + pixel.alpha * (1 - opacity);
+      const blended = mix(pixel.color, color(x, y), opacity / alpha);
+      return { color: blended, alpha };
+    },
+    { color: BLACK, alpha: 0 },
+  );
+}
+
+function renderPixels(layers, size) {
   const pixels = Buffer.alloc(size * size * 4);
   const scale = CANVAS / size;
-  const samplesPerPixel = SUPERSAMPLE * SUPERSAMPLE;
+  const samples = SUPERSAMPLE * SUPERSAMPLE;
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
-      const sum = [0, 0, 0, 0];
+      const sum = [0, 0, 0];
+      let alphaSum = 0;
       for (let sy = 0; sy < SUPERSAMPLE; sy++) {
         for (let sx = 0; sx < SUPERSAMPLE; sx++) {
-          const x = (px + (sx + 0.5) / SUPERSAMPLE) * scale;
-          const y = (py + (sy + 0.5) / SUPERSAMPLE) * scale;
-          const [r, g, b, a] = sample(x, y);
-          sum[0] += r * a;
-          sum[1] += g * a;
-          sum[2] += b * a;
-          sum[3] += a;
+          const pixel = sample(layers, (px + (sx + 0.5) / SUPERSAMPLE) * scale, (py + (sy + 0.5) / SUPERSAMPLE) * scale);
+          pixel.color.forEach((channel, index) => {
+            sum[index] += channel * pixel.alpha;
+          });
+          alphaSum += pixel.alpha;
         }
       }
       const offset = (py * size + px) * 4;
-      const alpha = sum[3] / samplesPerPixel;
-      pixels[offset] = sum[3] ? Math.round(sum[0] / sum[3]) : 0;
-      pixels[offset + 1] = sum[3] ? Math.round(sum[1] / sum[3]) : 0;
-      pixels[offset + 2] = sum[3] ? Math.round(sum[2] / sum[3]) : 0;
-      pixels[offset + 3] = Math.round(alpha);
+      sum.forEach((channel, index) => {
+        pixels[offset + index] = alphaSum ? Math.round(channel / alphaSum) : 0;
+      });
+      pixels[offset + 3] = Math.round((alphaSum / samples) * 255);
     }
   }
   return pixels;
@@ -116,9 +172,32 @@ function encodePng(size, pixels) {
   ]);
 }
 
-fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-SIZES.forEach((size) => {
-  const file = path.join(OUTPUT_DIR, `icon${size}.png`);
-  fs.writeFileSync(file, encodePng(size, renderPixels(size)));
+function padded(layers, padding) {
+  const scale = CANVAS / (CANVAS - padding * 2);
+  const inner = (value) => (value - padding) * scale;
+  return layers.map(({ shape, color, opacity }) => ({
+    shape: (x, y) => shape(inner(x), inner(y)),
+    color: (x, y) => color(inner(x), inner(y)),
+    opacity,
+  }));
+}
+
+function writePng(file, layers, size) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, encodePng(size, renderPixels(layers, size)));
   process.stdout.write(`wrote ${file}\n`);
-});
+}
+
+const projectRoot = path.join(import.meta.dirname, "..");
+const args = process.argv.slice(2);
+const forStore = args.includes(STORE_FLAG);
+const [designName = DEFAULT_DESIGN, outputDir = path.join(projectRoot, "icons")] = args.filter((arg) => arg !== STORE_FLAG);
+const design = DESIGNS[designName];
+if (!design) {
+  throw new Error(`Unknown design "${designName}". Choose one of: ${Object.keys(DESIGNS).join(", ")}`);
+}
+if (forStore) {
+  writePng(path.join(projectRoot, "..", STORE_DIR, STORE_FILE), padded(design(), STORE_PADDING), STORE_SIZE);
+} else {
+  SIZES.forEach((size) => writePng(path.join(outputDir, `icon${size}.png`), design(), size));
+}
