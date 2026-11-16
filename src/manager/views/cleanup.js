@@ -90,7 +90,7 @@ export function renderCleanup(context) {
   const { state, container } = context;
   const groups = findDuplicateGroups(state.entries);
   const extras = extraEntries(groups);
-  const emptyFolders = findEmptyFolders(state.entries);
+  const emptyFolders = findEmptyFolders(state.entries).filter((entry) => !context.isPinnedSpace(entry.node));
   const bookmarkTotal = state.entries.filter((entry) => !isFolder(entry.node)).length;
   const folderTotal = state.entries.filter((entry) => isFolder(entry.node) && entry.ancestors.length > 0).length;
 

@@ -12,11 +12,13 @@ export function flattenTree(nodes, ancestors = []) {
   });
 }
 
-export function countBookmarks(node) {
+export function countBookmarks(node, isHidden = () => false) {
   if (!isFolder(node)) {
     return 1;
   }
-  return (node.children ?? []).reduce((total, child) => total + countBookmarks(child), 0);
+  return (node.children ?? [])
+    .filter((child) => !isHidden(child))
+    .reduce((total, child) => total + countBookmarks(child, isHidden), 0);
 }
 
 export function pathLabel(entry) {

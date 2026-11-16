@@ -93,6 +93,10 @@ function styleFrom(values) {
   return { color: normalizeColor(values.color), icon: normalizeIcon(values.icon) };
 }
 
+function isPinnedSpace(node) {
+  return sourceIds(node).some((id) => state.spaceFolderIds.includes(id));
+}
+
 function canMoveInto(id, folderId) {
   const target = state.byId.get(folderId);
   if (!target || id === folderId) {
@@ -250,7 +254,8 @@ function buildContext(route) {
     isSpace: spaceIndex === lineage.length - 1,
     customizeSpace,
     isRootFolder: lineage.length === 1,
-    isPinned: sourceIds(folder).some((id) => state.spaceFolderIds.includes(id)),
+    isPinned: isPinnedSpace(folder),
+    isPinnedSpace,
     canMoveInto,
     nodeById,
     moveNode,
@@ -268,7 +273,7 @@ function renderSidebar(route, context) {
     const item = el("button", { class: `sidebar-item${active ? " active" : ""}`, type: "button", onclick: () => navigateToFolder(space.id) }, [
       spaceChip(spaceStyle(space.id)),
       el("span", { class: "sidebar-label", text: space.title }),
-      el("span", { class: "sidebar-count", text: String(countBookmarks(space)) }),
+      el("span", { class: "sidebar-count", text: String(countBookmarks(space, isPinnedSpace)) }),
     ]);
     makeDropTarget(item, {
       canAccept: (id) => canMoveInto(id, space.id),

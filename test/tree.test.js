@@ -35,6 +35,10 @@ test("matchesQuery requires every term in title or url", () => {
   assert.equal(matchesQuery(node, "docs missing"), false);
 });
 
+test("countBookmarks skips hidden children and everything inside them", () => {
+  assert.equal(countBookmarks(tree[0], (node) => node.id === "11"), 2);
+});
+
 test("sortedChildren puts folders first then sorts by title ignoring case", () => {
   assert.deepEqual(sortedChildren(tree[0]).map((node) => node.title), ["Work", "Alpha", "zeta"]);
 });

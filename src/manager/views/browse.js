@@ -33,8 +33,12 @@ function rowActions(node, context) {
   ]);
 }
 
+function visibleChildren(folder, context) {
+  return (folder.children ?? []).filter((child) => !context.isPinnedSpace(child));
+}
+
 function folderMain(node, context) {
-  const total = countBookmarks(node);
+  const total = countBookmarks(node, context.isPinnedSpace);
   return el("a", { class: "row-main", href: context.folderHref(node.id), draggable: "false" }, [
     nodeIcon(node),
     el("span", { class: "row-title", text: node.title || "Untitled folder" }),
@@ -128,8 +132,8 @@ function emptyState(emoji, title, detail) {
 }
 
 function renderHero(context) {
-  const folderTotal = (context.folder.children ?? []).filter(isFolder).length;
-  const summary = `${plural(countBookmarks(context.folder), "bookmark")} · ${plural(folderTotal, "folder")}`;
+  const folderTotal = visibleChildren(context.folder, context).filter(isFolder).length;
+  const summary = `${plural(countBookmarks(context.folder, context.isPinnedSpace), "bookmark")} · ${plural(folderTotal, "folder")}`;
   return el("header", { class: "hero" }, [
     spaceChip(context.spaceStyle, "space-chip-large"),
     el("div", { class: "hero-text" }, [renderBreadcrumb(context), el("p", { class: "hero-meta", text: summary })]),
@@ -138,7 +142,7 @@ function renderHero(context) {
 }
 
 export function renderBrowse(context) {
-  const children = context.folder.children ?? [];
+  const children = visibleChildren(context.folder, context);
   const body = children.length
     ? el("ul", { class: "rows" }, children.map((child) => renderRow(child, context)))
     : emptyState("📭", "This folder is empty", "Add a bookmark, create a folder, or drag items here from another folder.");
