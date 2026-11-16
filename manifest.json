@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "MyBookmarks",
+  "version": "0.1.0",
+  "description": "A clean workspace to organize and clean up your Chrome bookmarks, with spaces, folders, and one-click cleanup.",
+  "minimum_chrome_version": "116",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_title": "MyBookmarks",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+
+  "permissions": ["bookmarks", "storage", "favicon"]
+}

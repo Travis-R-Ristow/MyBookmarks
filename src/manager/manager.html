@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MyBookmarks</title>
+    <link rel="icon" href="../../icons/icon32.png" />
+    <link rel="stylesheet" href="manager.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="../../icons/icon48.png" alt="" width="24" height="24" />
+          <span>MyBookmarks</span>
+        </div>
+        <div class="sidebar-head">
+          <span>Spaces</span>
+          <button id="add-space" class="icon-button" type="button" title="New space" aria-label="New space">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
+        <nav id="space-list" class="sidebar-list" aria-label="Spaces"></nav>
+        <label id="merge-row" class="merge-row" hidden>
+          <input id="merge-toggle" class="switch" type="checkbox" role="switch" />
+          <span>Merge account and this device</span>
+        </label>
+        <div class="sidebar-head"><span>Tools</span></div>
+        <nav class="sidebar-list" aria-label="Tools">
+          <button class="sidebar-item" type="button" data-view="cleanup"><span class="sidebar-label">Cleanup</span></button>
+          <button class="sidebar-item" type="button" data-view="shortcuts"><span class="sidebar-label">Site search</span></button>
+        </nav>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <input id="search" class="search" type="search" placeholder="Search all bookmarks" autocomplete="off" spellcheck="false" aria-label="Search all bookmarks" />
+        </header>
+        <section id="view" class="view"></section>
+      </main>
+    </div>
+    <dialog id="dialog" class="dialog"></dialog>
+    <div id="toasts" class="toasts"></div>
+    <script type="module" src="manager.js"></script>
+  </body>
+</html>

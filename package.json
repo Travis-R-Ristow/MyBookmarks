@@ -1,0 +1,11 @@
+{
+  "name": "mybookmarks",
+  "private": true,
+  "type": "module",
+  "description": "Chrome extension to organize and clean up bookmarks",
+  "scripts": {
+    "test": "node --test",
+    "icons": "node scripts/generate-icons.js",
+    "package": "v=$(node -p \"JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version\") && out=\"../mybookmarks-$v.zip\" && rm -f \"$out\" && zip -rq \"$out\" manifest.json src icons && echo \"packaged $out\""
+  }
+}
