@@ -30,7 +30,7 @@ Chrome's bookmark manager is a plain folder tree. MyBookmarks sits on top of it 
 
 |     | Feature               | What you get                                                                                                                                                                                  |
 | --- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ⭐  | **Spaces**            | Any folder can be pinned to the sidebar as a space. Pick a color, pick an emoji (or type your own), and the whole view takes on its tint.                                                     |
+| ⭐  | **Spaces**            | Any folder can be pinned to the sidebar as a space. Pick any color, then an emoji, two letters or your own image as the icon, and the whole view takes on its tint.                                                     |
 | 🔀  | **Merged view**       | Chrome keeps separate "account" and "this device" copies of Bookmarks bar and Other bookmarks. One toggle shows them as a single space, with an `Account` / `This device` label on every row. |
 | 📁  | **Folders**           | Create, rename, delete, and drag to reorder. Drop on a row's edge to place above or below it, or on a folder to move inside.                                                                  |
 | 📦  | **Move to…**          | Send any bookmark or folder to any other folder from a searchable list.                                                                                                                       |
@@ -74,7 +74,7 @@ Your bookmarks live in Chrome and nowhere else. MyBookmarks keeps only a few set
 | Stored                   | Size                      | Removed when                                  |
 | ------------------------ | ------------------------- | --------------------------------------------- |
 | Which folders are spaces | One id per space          | The space is removed or its folder is deleted |
-| Space color and icon     | One small entry per space | Same as above                                 |
+| Space color and icon     | One small entry per space. An uploaded image icon is shrunk to 64px first (a few KB). | Same as above                                 |
 | Merge toggle             | One true/false            | Never (single value)                          |
 
 Nothing is sent anywhere. There is no account, no server and no analytics.

@@ -1,3 +1,5 @@
+import { isEmoji, isIconImage } from "./spaces.js";
+
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 const ICON_PATHS = {
@@ -81,8 +83,21 @@ export function textButton(label, onclick, options = {}) {
   ]);
 }
 
+function chipKindClass(icon) {
+  if (isIconImage(icon)) {
+    return "space-chip-image";
+  }
+  return isEmoji(icon) ? "" : "space-chip-text";
+}
+
 export function spaceChip(style, extraClass = "") {
-  const chip = el("span", { class: `space-chip ${extraClass}`.trim(), "aria-hidden": "true", text: style.icon });
+  const classes = ["space-chip", chipKindClass(style.icon), extraClass].filter(Boolean).join(" ");
+  const chip = el("span", { class: classes, "aria-hidden": "true" });
+  if (isIconImage(style.icon)) {
+    chip.append(el("img", { src: style.icon, alt: "", draggable: "false" }));
+  } else {
+    chip.textContent = style.icon;
+  }
   chip.style.setProperty("--chip", style.color);
   return chip;
 }

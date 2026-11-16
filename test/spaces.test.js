@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SPACE_COLORS, SPACE_ICONS, defaultSpaceStyle, normalizeIcon, remapSpaces, resolveSpaceStyle, withoutSpaces } from "../src/lib/spaces.js";
+import {
+  SPACE_COLORS,
+  SPACE_ICONS,
+  defaultSpaceStyle,
+  isEmoji,
+  isIconImage,
+  normalizeColor,
+  normalizeIcon,
+  readableTextColor, remapSpaces, 
+  resolveSpaceStyle,
+  withoutSpaces,
+} from "../src/lib/spaces.js";
 
 const FOLDER_ICONS = ["📁", "📂", "🗂️"];
 
@@ -21,13 +32,37 @@ test("no default or quick-pick icon looks like a folder", () => {
   assert.equal(new Set(SPACE_ICONS).size, SPACE_ICONS.length);
 });
 
-test("normalizeIcon keeps one emoji and rejects plain text", () => {
+test("normalizeIcon keeps one emoji, or up to two other characters", () => {
   assert.equal(normalizeIcon(" 🦄 "), "🦄");
   assert.equal(normalizeIcon("🦄🚀"), "🦄");
   assert.equal(normalizeIcon("👨‍👩‍👧"), "👨‍👩‍👧");
   assert.equal(normalizeIcon("🇺🇸"), "🇺🇸");
-  assert.equal(normalizeIcon("abc"), null);
+  assert.equal(normalizeIcon("abc"), "ab");
+  assert.equal(normalizeIcon("✓"), "✓");
   assert.equal(normalizeIcon("   "), null);
+  assert.equal(isEmoji("🦄"), true);
+  assert.equal(isEmoji("JS"), false);
+});
+
+test("normalizeIcon accepts only small png data urls as images", () => {
+  const image = "data:image/png;base64,iVBORw0KGgo=";
+  assert.equal(normalizeIcon(image), image);
+  assert.equal(isIconImage(image), true);
+  assert.equal(isIconImage("data:image/svg+xml;base64,AAAA"), false);
+  assert.equal(isIconImage(`data:image/png;base64,${"A".repeat(50000)}`), false);
+});
+
+test("normalizeColor accepts six-digit hex only", () => {
+  assert.equal(normalizeColor(" #FFD400 "), "#ffd400");
+  assert.equal(normalizeColor("#fff"), null);
+  assert.equal(normalizeColor("red"), null);
+});
+
+test("readableTextColor picks dark text on light colors and white on the palette", () => {
+  assert.equal(readableTextColor("#ffd400"), "#111827");
+  assert.equal(readableTextColor("#ffffff"), "#111827");
+  assert.equal(readableTextColor("#000000"), "#ffffff");
+  SPACE_COLORS.forEach((color) => assert.equal(readableTextColor(color.value), "#ffffff"));
 });
 
 test("withoutSpaces drops pins and styles for removed folders only", () => {

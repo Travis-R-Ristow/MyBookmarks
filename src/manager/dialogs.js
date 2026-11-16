@@ -1,4 +1,6 @@
 import { el, icon } from "../lib/dom.js";
+import { isIconImage } from "../lib/spaces.js";
+import { ICON_IMAGE_TYPES, fileToIconDataUrl } from "./icon-image.js";
 
 const dialog = document.getElementById("dialog");
 
@@ -40,23 +42,96 @@ function textField(field) {
   return { name: field.name, node, read: () => input.value.trim(), focus: () => input.select() };
 }
 
-function customChoiceInput(field) {
-  if (!field.custom) {
-    return null;
-  }
-  const preset = field.options.some((option) => option.value === field.value);
-  return el("input", {
+const UNUSED_COLOR = "#888888";
+
+function isPreset(field) {
+  return field.options.some((option) => option.value === field.value);
+}
+
+function textCustom(field, markUsed) {
+  const input = el("input", {
     class: "choice-custom",
     type: "text",
     maxlength: "16",
-    value: preset ? "" : field.value,
+    value: isPreset(field) ? "" : field.value,
     placeholder: field.custom.placeholder,
     "aria-label": field.custom.label,
     autocomplete: "off",
   });
+  input.addEventListener("input", () => {
+    if (input.value.trim()) {
+      markUsed();
+    }
+  });
+  const clear = () => {
+    input.value = "";
+  };
+  return { nodes: [input], read: () => input.value.trim(), clear };
 }
 
-function choiceField(field) {
+function iconCustom(field, markUsed, setError) {
+  let image = isIconImage(field.value) ? field.value : "";
+  const preview = el("img", { class: "choice-preview", alt: "Uploaded icon" });
+  const showImage = (value) => {
+    image = value;
+    preview.hidden = !value;
+    if (value) {
+      preview.src = value;
+    }
+  };
+  const text = textCustom({ ...field, value: image ? "" : field.value }, () => {
+    showImage("");
+    markUsed();
+  });
+  const fileInput = el("input", { type: "file", accept: ICON_IMAGE_TYPES, hidden: true });
+  const upload = el("button", { class: "button button-ghost", type: "button", text: field.custom.uploadLabel, onclick: () => fileInput.click() });
+  fileInput.addEventListener("change", async () => {
+    const [file] = fileInput.files;
+    fileInput.value = "";
+    if (!file) {
+      return;
+    }
+    try {
+      showImage(await fileToIconDataUrl(file));
+      text.clear();
+      markUsed();
+      setError("");
+    } catch (error) {
+      setError(error.message);
+    }
+  });
+  showImage(image);
+  const clear = () => {
+    showImage("");
+    text.clear();
+  };
+  return { nodes: [...text.nodes, upload, preview, fileInput], read: () => image || text.read(), clear };
+}
+
+function colorCustom(field, markUsed) {
+  let used = !isPreset(field);
+  const input = el("input", { class: "choice-input", type: "color", value: used ? field.value : UNUSED_COLOR, "aria-label": field.custom.label });
+  const face = el("span", { class: "choice-face choice-swatch choice-rainbow", title: field.custom.label });
+  const paint = () => {
+    face.classList.toggle("used", used);
+    face.style.setProperty("--chip", input.value);
+  };
+  input.addEventListener("input", () => {
+    used = true;
+    paint();
+    markUsed();
+  });
+  paint();
+  const clear = () => {
+    used = false;
+    paint();
+  };
+  return { nodes: [el("label", { class: "choice" }, [input, face])], read: () => (used ? input.value : ""), clear };
+}
+
+const CUSTOM_BUILDERS = { icon: iconCustom, color: colorCustom };
+
+function choiceField(field, setError) {
   const inputs = field.options.map((option) =>
     el("input", {
       class: "choice-input",
@@ -67,7 +142,12 @@ function choiceField(field) {
       "aria-label": option.label,
     }),
   );
-  const custom = customChoiceInput(field);
+  const uncheckAll = () => {
+    inputs.forEach((input) => {
+      input.checked = false;
+    });
+  };
+  const custom = field.custom ? CUSTOM_BUILDERS[field.custom.kind](field, uncheckAll, setError) : null;
   const choices = field.options.map((option, index) => {
     const face = el("span", { class: `choice-face choice-${field.variant}`, title: option.label, text: option.text });
     if (option.color) {
@@ -76,37 +156,28 @@ function choiceField(field) {
     return el("label", { class: "choice" }, [inputs[index], face]);
   });
   inputs.forEach((input) => {
-    input.addEventListener("change", () => {
-      if (custom) {
-        custom.value = "";
-      }
-    });
-  });
-  custom?.addEventListener("input", () => {
-    if (!custom.value.trim()) {
-      return;
-    }
-    inputs.forEach((input) => {
-      input.checked = false;
-    });
+    input.addEventListener("change", () => custom?.clear());
   });
   const node = el("fieldset", { class: "field" }, [
     el("legend", { class: "field-label", text: field.label }),
-    el("div", { class: "choices" }, [...choices, custom]),
+    el("div", { class: "choices" }, [...choices, ...(custom?.nodes ?? [])]),
   ]);
-  const read = () => custom?.value.trim() || inputs.find((input) => input.checked)?.value || field.value;
+  const read = () => custom?.read() || inputs.find((input) => input.checked)?.value || field.value;
   return { name: field.name, node, read, focus: () => inputs.find((input) => input.checked)?.focus() };
 }
 
-function buildField(field) {
-  return field.type === "choice" ? choiceField(field) : textField(field);
+function buildField(field, setError) {
+  return field.type === "choice" ? choiceField(field, setError) : textField(field);
 }
 
 export function openFormDialog({ title, fields, submitLabel = "Save", validate = () => null }) {
   return new Promise((resolve) => {
     let result = null;
-    const controls = fields.map(buildField);
     const error = el("p", { class: "form-error", role: "alert" });
+    const setError = (message) => {
+      error.textContent = message;
+    };
+    const controls = fields.map((field) => buildField(field, setError));
     const submit = (event) => {
       event.preventDefault();
       const values = Object.fromEntries(controls.map((control) => [control.name, control.read()]));

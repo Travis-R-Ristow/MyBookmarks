@@ -1,6 +1,14 @@
 import { el, icon, spaceChip } from "../lib/dom.js";
 import { buildViewRoots, hasTwinRoots, primarySource, sourceIds } from "../lib/merge.js";
-import { defaultSpaceStyle, normalizeIcon, resolveSpaceStyle, spaceStyleFields, withoutSpaces } from "../lib/spaces.js";
+import {
+  defaultSpaceStyle,
+  normalizeColor,
+  normalizeIcon,
+  readableTextColor,
+  resolveSpaceStyle,
+  spaceStyleFields,
+  withoutSpaces,
+} from "../lib/spaces.js";
 import {
   loadMergeRoots,
   loadSpaceFolderIds,
@@ -82,7 +90,7 @@ function savedStyle(node) {
 }
 
 function styleFrom(values) {
-  return { color: values.color, icon: normalizeIcon(values.icon) };
+  return { color: normalizeColor(values.color), icon: normalizeIcon(values.icon) };
 }
 
 function canMoveInto(id, folderId) {
@@ -160,16 +168,22 @@ function saveSpaceStyle(id, values) {
   return saveSpaceStyles({ ...state.spaceStyles, [styleKey(nodeById(id))]: styleFrom(values) });
 }
 
-function iconError(values) {
-  return normalizeIcon(values.icon) ? null : "Icon must be a single emoji.";
+function styleError(values) {
+  if (!normalizeColor(values.color)) {
+    return "Pick a color.";
+  }
+  return normalizeIcon(values.icon) ? null : "Choose an icon: an emoji, up to 2 characters, or an image.";
 }
 
 function applyTint(color) {
+  const rootStyle = document.documentElement.style;
   if (color) {
-    document.documentElement.style.setProperty("--space", color);
+    rootStyle.setProperty("--space", color);
+    rootStyle.setProperty("--on-accent", readableTextColor(color));
     return;
   }
-  document.documentElement.style.removeProperty("--space");
+  rootStyle.removeProperty("--space");
+  rootStyle.removeProperty("--on-accent");
 }
 
 function addSpace() {
@@ -181,7 +195,7 @@ function addSpace() {
         { name: "title", label: "Name", placeholder: "Work, Personal, Reading", hint: "Creates a bookmark folder and pins it here." },
         ...spaceStyleFields(defaultSpaceStyle({}, spaces().length)),
       ],
-      validate: (candidate) => (candidate.title ? iconError(candidate) : "Name is required."),
+      validate: (candidate) => (candidate.title ? styleError(candidate) : "Name is required."),
     });
     if (!values) {
       return;
@@ -208,7 +222,7 @@ function customizeSpace(id) {
     const values = await openFormDialog({
       title: `Customize ${node.title}`,
       fields: [...nameFields, ...spaceStyleFields(spaceStyle(id))],
-      validate: (candidate) => (renamable && !candidate.title ? "Name is required." : iconError(candidate)),
+      validate: (candidate) => (renamable && !candidate.title ? "Name is required." : styleError(candidate)),
     });
     if (!values) {
       return;

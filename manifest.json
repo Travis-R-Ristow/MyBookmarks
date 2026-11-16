@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MyBookmarks",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A clean workspace to organize and clean up your Chrome bookmarks, with spaces, folders, and one-click cleanup.",
   "minimum_chrome_version": "116",
 

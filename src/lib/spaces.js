@@ -19,13 +19,54 @@ const ROOT_ICONS = { "bookmarks-bar": "⭐", other: "📦", mobile: "📱" };
 const ROTATING_ICONS = SPACE_ICONS.filter((emoji) => !Object.values(ROOT_ICONS).includes(emoji));
 const EMOJI_PATTERN = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|⃣/u;
 
+export const ICON_IMAGE_SIZE = 64;
+
+const ICON_IMAGE_PATTERN = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/;
+const MAX_ICON_IMAGE_LENGTH = 40000;
+const MAX_TEXT_ICON_GRAPHEMES = 2;
+const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/;
+const LIGHT_COLOR_LUMINANCE = 0.45;
+const TEXT_ON_LIGHT = "#111827";
+const TEXT_ON_DARK = "#ffffff";
+
+export function isIconImage(icon) {
+  return icon.length <= MAX_ICON_IMAGE_LENGTH && ICON_IMAGE_PATTERN.test(icon);
+}
+
+export function isEmoji(text) {
+  return EMOJI_PATTERN.test(text);
+}
+
 export function normalizeIcon(text) {
+  const trimmed = text.trim();
+  if (isIconImage(trimmed)) {
+    return trimmed;
+  }
   const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-  const [first] = segmenter.segment(text.trim());
-  if (!first || !EMOJI_PATTERN.test(first.segment)) {
+  const graphemes = [...segmenter.segment(trimmed)].map((part) => part.segment);
+  if (!graphemes.length) {
     return null;
   }
-  return first.segment;
+  if (isEmoji(graphemes[0])) {
+    return graphemes[0];
+  }
+  return graphemes.slice(0, MAX_TEXT_ICON_GRAPHEMES).join("");
+}
+
+export function normalizeColor(text) {
+  const candidate = text.trim().toLowerCase();
+  return HEX_COLOR_PATTERN.test(candidate) ? candidate : null;
+}
+
+function channelLuminance(value) {
+  const ratio = value / 255;
+  return ratio <= 0.03928 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4;
+}
+
+export function readableTextColor(hexColor) {
+  const [red, green, blue] = [1, 3, 5].map((offset) => parseInt(hexColor.slice(offset, offset + 2), 16));
+  const luminance = 0.2126 * channelLuminance(red) + 0.7152 * channelLuminance(green) + 0.0722 * channelLuminance(blue);
+  return luminance > LIGHT_COLOR_LUMINANCE ? TEXT_ON_LIGHT : TEXT_ON_DARK;
 }
 
 export function defaultSpaceStyle(node, index) {
@@ -73,6 +114,7 @@ export function spaceStyleFields(style) {
       variant: "swatch",
       value: style.color,
       options: SPACE_COLORS.map((color) => ({ value: color.value, label: color.label, color: color.value })),
+      custom: { kind: "color", label: "Pick any color" },
     },
     {
       name: "icon",
@@ -81,7 +123,7 @@ export function spaceStyleFields(style) {
       variant: "emoji",
       value: style.icon,
       options: SPACE_ICONS.map((emoji) => ({ value: emoji, label: emoji, text: emoji })),
-      custom: { label: "Custom emoji", placeholder: "Or type your own" },
+      custom: { kind: "icon", label: "Custom emoji or letters", placeholder: "Emoji or 2 letters", uploadLabel: "Upload image" },
     },
   ];
 }
