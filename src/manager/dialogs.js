@@ -1,6 +1,6 @@
 import { el, icon } from "../lib/dom.js";
 import { isIconImage } from "../lib/spaces.js";
-import { ICON_IMAGE_TYPES, fileToIconDataUrl } from "./icon-image.js";
+import { ICON_IMAGE_TYPES, decodeSvgDataUrl, fileToIconDataUrl, isIconSvg, parseSvgInput } from "./icon-image.js";
 
 const dialog = document.getElementById("dialog");
 
@@ -71,6 +71,7 @@ function textCustom(field, markUsed) {
 
 function iconCustom(field, markUsed, setError) {
   let image = isIconImage(field.value) ? field.value : "";
+  const isSvg = isIconSvg(field.value);
   const preview = el("img", { class: "choice-preview", alt: "Uploaded icon" });
   const showImage = (value) => {
     image = value;
@@ -79,9 +80,54 @@ function iconCustom(field, markUsed, setError) {
       preview.src = value;
     }
   };
+  const svgArea = el("textarea", {
+    class: "svg-input",
+    placeholder: "Paste or edit SVG markup",
+    rows: "3",
+    spellcheck: "false",
+    autocomplete: "off",
+    hidden: !isSvg,
+  });
+  if (isSvg) {
+    svgArea.value = decodeSvgDataUrl(field.value);
+  }
+  const clearSvg = () => {
+    svgArea.value = "";
+    svgArea.hidden = true;
+  };
   const text = textCustom({ ...field, value: image ? "" : field.value }, () => {
     showImage("");
+    clearSvg();
     markUsed();
+  });
+  const svgToggle = el("button", {
+    class: "button",
+    type: "button",
+    text: "SVG",
+    onclick: () => {
+      svgArea.hidden = !svgArea.hidden;
+      if (!svgArea.hidden) {
+        svgArea.focus();
+      }
+    },
+  });
+  svgArea.addEventListener("input", () => {
+    const value = svgArea.value.trim();
+    if (!value) {
+      showImage("");
+      return;
+    }
+    try {
+      const dataUrl = parseSvgInput(value);
+      if (dataUrl) {
+        showImage(dataUrl);
+        text.clear();
+        markUsed();
+        setError("");
+      }
+    } catch (error) {
+      setError(error.message);
+    }
   });
   const fileInput = el("input", { type: "file", accept: ICON_IMAGE_TYPES, hidden: true });
   const upload = el("button", { class: "button button-ghost", type: "button", text: field.custom.uploadLabel, onclick: () => fileInput.click() });
@@ -94,6 +140,7 @@ function iconCustom(field, markUsed, setError) {
     try {
       showImage(await fileToIconDataUrl(file));
       text.clear();
+      clearSvg();
       markUsed();
       setError("");
     } catch (error) {
@@ -104,8 +151,9 @@ function iconCustom(field, markUsed, setError) {
   const clear = () => {
     showImage("");
     text.clear();
+    clearSvg();
   };
-  return { nodes: [...text.nodes, upload, preview, fileInput], read: () => image || text.read(), clear };
+  return { nodes: [...text.nodes, upload, svgToggle, preview, fileInput, svgArea], read: () => image || text.read(), clear };
 }
 
 function colorCustom(field, markUsed) {

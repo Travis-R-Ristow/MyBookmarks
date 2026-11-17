@@ -21,7 +21,7 @@ const EMOJI_PATTERN = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regio
 
 export const ICON_IMAGE_SIZE = 64;
 
-const ICON_IMAGE_PATTERN = /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/;
+const ICON_IMAGE_PATTERN = /^data:image\/(png|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
 const MAX_ICON_IMAGE_LENGTH = 40000;
 const MAX_TEXT_ICON_GRAPHEMES = 2;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/;
@@ -123,7 +123,7 @@ export function spaceStyleFields(style) {
       variant: "emoji",
       value: style.icon,
       options: SPACE_ICONS.map((emoji) => ({ value: emoji, label: emoji, text: emoji })),
-      custom: { kind: "icon", label: "Custom emoji or letters", placeholder: "Emoji or 2 letters", uploadLabel: "Upload image" },
+      custom: { kind: "icon", label: "Custom emoji, text, or SVG", placeholder: "Emoji, text, or paste SVG", uploadLabel: "Upload image" },
     },
   ];
 }

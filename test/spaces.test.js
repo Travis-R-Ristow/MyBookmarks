@@ -44,11 +44,14 @@ test("normalizeIcon keeps one emoji, or up to two other characters", () => {
   assert.equal(isEmoji("JS"), false);
 });
 
-test("normalizeIcon accepts only small png data urls as images", () => {
-  const image = "data:image/png;base64,iVBORw0KGgo=";
-  assert.equal(normalizeIcon(image), image);
-  assert.equal(isIconImage(image), true);
-  assert.equal(isIconImage("data:image/svg+xml;base64,AAAA"), false);
+test("normalizeIcon accepts small png and svg data urls as images", () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+  const svg = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=";
+  assert.equal(normalizeIcon(png), png);
+  assert.equal(isIconImage(png), true);
+  assert.equal(normalizeIcon(svg), svg);
+  assert.equal(isIconImage(svg), true);
+  assert.equal(isIconImage("data:image/gif;base64,AAAA"), false);
   assert.equal(isIconImage(`data:image/png;base64,${"A".repeat(50000)}`), false);
 });
 

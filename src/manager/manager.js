@@ -25,6 +25,7 @@ import { showSuccess } from "./toasts.js";
 import { makeDropTarget } from "./drag.js";
 import { renderBrowse, renderSearchResults } from "./views/browse.js";
 import { renderCleanup } from "./views/cleanup.js";
+import { renderHome } from "./views/home.js";
 import { renderShortcuts } from "./views/shortcuts.js";
 
 const RELOAD_DEBOUNCE_MS = 60;
@@ -55,12 +56,12 @@ let reloadTimer = null;
 function readRoute() {
   const hash = location.hash.slice(1);
   if (TOOL_VIEWS[hash]) {
-    return { tool: hash, folderId: null };
+    return { home: false, tool: hash, folderId: null };
   }
   if (hash.startsWith(FOLDER_ROUTE)) {
-    return { tool: null, folderId: hash.slice(FOLDER_ROUTE.length) };
+    return { home: false, tool: null, folderId: hash.slice(FOLDER_ROUTE.length) };
   }
-  return { tool: null, folderId: null };
+  return { home: true, tool: null, folderId: null };
 }
 
 function currentFolder(route) {
@@ -266,10 +267,10 @@ function buildContext(route) {
   };
 }
 
-function renderSidebar(route, context) {
-  const browsing = !route.tool && !state.query;
+function renderSidebar(route, activeSpaceId) {
+  const browsing = !route.home && !route.tool && !state.query;
   const items = spaces().map((space) => {
-    const active = browsing && context.activeSpaceId === space.id;
+    const active = browsing && activeSpaceId === space.id;
     const item = el("button", { class: `sidebar-item${active ? " active" : ""}`, type: "button", onclick: () => navigateToFolder(space.id) }, [
       spaceChip(spaceStyle(space.id)),
       el("span", { class: "sidebar-label", text: space.title }),
@@ -294,13 +295,22 @@ function render() {
     return;
   }
   const route = readRoute();
-  const context = buildContext(route);
-  renderSidebar(route, context);
-  applyTint(state.query || route.tool ? null : context.spaceStyle.color);
   if (state.query) {
+    const context = buildContext(route);
+    renderSidebar(route, context.activeSpaceId);
+    applyTint(null);
     renderSearchResults(context);
     return;
   }
+  if (route.home) {
+    renderSidebar(route, null);
+    applyTint(null);
+    renderHome({ container, spaces: spaces(), spaceStyle, isPinnedSpace, navigateToFolder, addSpace });
+    return;
+  }
+  const context = buildContext(route);
+  renderSidebar(route, context.activeSpaceId);
+  applyTint(route.tool ? null : context.spaceStyle.color);
   if (route.tool) {
     TOOL_VIEWS[route.tool](context);
     return;
@@ -339,6 +349,7 @@ searchInput.addEventListener("input", () => {
   render();
 });
 document.getElementById("add-space").addEventListener("click", addSpace);
+document.querySelector(".brand").addEventListener("click", () => navigate(""));
 mergeToggle.addEventListener("change", () => guarded(() => saveMergeRoots(mergeToggle.checked)));
 toolButtons.forEach((button) => {
   button.prepend(icon(button.dataset.view));
